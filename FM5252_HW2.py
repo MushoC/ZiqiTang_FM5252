@@ -52,10 +52,10 @@ def crr_eu_call(
         if n == N:
             return 0
         else:
-            u1 = np.exp((sigma+delta_r)*np.sqrt(dt))
+            u1 = np.exp((sigma*(1+delta_r))*np.sqrt(dt))
             d1 = 1/u1
 
-            u2 = np.exp((sigma-delta_r)*np.sqrt(dt))
+            u2 = np.exp((sigma*(1-delta_r))*np.sqrt(dt))
             d2 = 1/u2
 
             def option_value_vega_plus(n, j):
@@ -147,10 +147,10 @@ def crr_eu_put(
         if n == N:
             return 0
         else:
-            u1 = np.exp((sigma+delta_r)*np.sqrt(dt))
+            u1 = np.exp((sigma*(1+delta_r))*np.sqrt(dt))
             d1 = 1/u1
 
-            u2 = np.exp((sigma-delta_r)*np.sqrt(dt))
+            u2 = np.exp((sigma*(1-delta_r))*np.sqrt(dt))
             d2 = 1/u2
 
             def option_value_vega_plus(n, j):
@@ -244,10 +244,10 @@ def crr_us_call(
         if n == N:
             return 0
         else:
-            u1 = np.exp((sigma+delta_r)*np.sqrt(dt))
+            u1 = np.exp((sigma*(1+delta_r))*np.sqrt(dt))
             d1 = 1/u1
 
-            u2 = np.exp((sigma-delta_r)*np.sqrt(dt))
+            u2 = np.exp((sigma*(1-delta_r))*np.sqrt(dt))
             d2 = 1/u2
 
             def option_value_vega_plus(n, j):
@@ -353,10 +353,10 @@ def crr_us_put(
         if n == N:
             return 0
         else:
-            u1 = np.exp((sigma+delta_r)*np.sqrt(dt))
+            u1 = np.exp((sigma*(1+delta_r))*np.sqrt(dt))
             d1 = 1/u1
 
-            u2 = np.exp((sigma-delta_r)*np.sqrt(dt))
+            u2 = np.exp((sigma*(1-delta_r))*np.sqrt(dt))
             d2 = 1/u2
 
             def option_value_vega_plus(n, j):
