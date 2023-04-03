@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "c0T+OfR5Vnn7a1IceRgZFbI4O/h37JHiW96Mnj1n+tgdARSZzTcgP99TfI+Mg39f0yCaMqjMIyN2ean6TYoN9w==",
+  "success": true,
+  "projectFilePath": "/Users/musho/Desktop/FM5252/HW4_test/HW4.csproj",
+  "expectedPackageFiles": [
+    "/Users/musho/.nuget/packages/mathnet.numerics/5.0.0/mathnet.numerics.5.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
