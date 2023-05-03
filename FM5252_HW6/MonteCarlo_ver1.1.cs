@@ -27,8 +27,10 @@ class MonteCarlo
         int steps = int.Parse(Console.ReadLine());
         Console.Write("Input simulations: ");
         int n = int.Parse(Console.ReadLine());
-        Console.Write("Input base number for Van Der Corput: ");
-        double baseNumber = double.Parse(Console.ReadLine());
+        Console.Write("Input base number 1 for Van Der Corput: ");
+        double baseNumber1 = double.Parse(Console.ReadLine());
+        Console.Write("Input base number 2 for Van Der Corput: ");
+        double baseNumber2 = double.Parse(Console.ReadLine());
         Console.Write("Apply antithetic?: 'true' or 'false'");
         bool applyAntithetic = bool.Parse(Console.ReadLine());
 
@@ -37,7 +39,12 @@ class MonteCarlo
         double[] sAnti = new double[n];
 
         // Define Van Der Corput sequences
-        double[] vdc = new double[n];
+        double baseNumber = 0;
+        double[] rand = new double[2*n];
+        double[] rand1 = new double[n];
+        double[] rand2 = new double[n];
+        double[] vdc1 = new double[n];
+        double[] vdc2 = new double[n];
 
         // Define results output
         double[] payoff = new double[n];
@@ -60,10 +67,15 @@ class MonteCarlo
                 double[] payoffAnti = new double[n];
                 double[] payoffAvg = new double[n];
 
-                vdc[i] = VanDerCorput(i + 1, baseNumber);
+                vdc1[i] = VanDerCorput(i + 1, baseNumber1);
+                vdc2[i] = VanDerCorput(i + 1, baseNumber2);
+                rand1[i] = Math.Sqrt(-2.0 * Math.Log(vdc1[i])) * Math.Cos(2.0 * Math.PI * vdc2[i]);
+                rand2[i] = Math.Sqrt(-2.0 * Math.Log(vdc1[i])) * Math.Sin(2.0 * Math.PI * vdc2[i]);
+                Array.Copy(rand1, rand, rand1.Length);
+                Array.Copy(rand2, 0, rand, rand1.Length, rand2.Length);
 
-                s = GeometricBrownian(s0,k,r,sigma,dt,n,vdc);
-                sAnti = GeometricBrownianAnti(s0,k,r,sigma,dt,n,vdc);
+                s = GeometricBrownian(s0,k,r,sigma,dt,n,rand);
+                sAnti = GeometricBrownianAnti(s0,k,r,sigma,dt,n,rand);
 
                 payoff[i] = optionType == "call" ? Math.Max(s[i] - k, 0) : Math.Max(k - s[i], 0);
                 payoffAnti[i] = optionType == "call" ? Math.Max(sAnti[i] - k, 0) : Math.Max(k - sAnti[i], 0);
@@ -77,9 +89,14 @@ class MonteCarlo
         {
             for (int i = 0; i < n; i++)
             {
-                vdc[i] = VanDerCorput(i + 1, baseNumber);
+                vdc1[i] = VanDerCorput(i + 1, baseNumber1);
+                vdc2[i] = VanDerCorput(i + 1, baseNumber2);
+                rand1[i] = Math.Sqrt(-2.0 * Math.Log(vdc1[i])) * Math.Cos(2.0 * Math.PI * vdc2[i]);
+                rand2[i] = Math.Sqrt(-2.0 * Math.Log(vdc1[i])) * Math.Sin(2.0 * Math.PI * vdc2[i]);
+                Array.Copy(rand1, rand, rand1.Length);
+                Array.Copy(rand2, 0, rand, rand1.Length, rand2.Length);
 
-                s = GeometricBrownian(s0,k,r,sigma,dt,n,vdc);
+                s = GeometricBrownian(s0,k,r,sigma,dt,n,rand);
 
                 payoff[i] = optionType == "call" ? Math.Max(s[i] - k, 0) : Math.Max(k - s[i], 0);
 
@@ -88,14 +105,14 @@ class MonteCarlo
             }
         }
 
-        optionPrice = (sumPayoffs / n) * Math.Exp(-r * t);
-        stdErrorAnti = Math.Sqrt((sumPayoffSquared / n) - Math.Pow(sumPayoffs / n, 2) / (n - 1)) / Math.Sqrt(n);
-        stdError = Math.Sqrt((payoff.Select(p => (p - optionPrice) * (p - optionPrice)).Sum()) / (n - 1)) / Math.Sqrt(n);
-        delta = GetDelta(s0,k,r,sigma,dt,n,vdc,optionType).Average();
-        gamma = GetGamma(s0,k,r,sigma,dt,n,vdc,optionType).Average();
-        vega = GetVega(s0,k,r,sigma,dt,n,vdc,optionType).Average();
-        theta = GetTheta(s0,k,r,sigma,dt,n,vdc,optionType).Average();
-        rho = GetRho(s0,k,r,sigma,dt,n,vdc,optionType).Average();
+        optionPrice = payoff.Average() * Math.Exp(-r * t);
+        stdErrorAnti = Math.Sqrt((sumPayoffSquared / (2 * n)) - Math.Pow(sumPayoffs / (2 * n), 2) / (n - 1)) / Math.Sqrt((2 * n));
+        stdError = Math.Sqrt((payoff.Select(p => (p - optionPrice) * (p - optionPrice)).Sum()) / ((2 * n) - 1)) / Math.Sqrt((2 * n));
+        delta = GetDelta(s0,k,r,sigma,dt,n,rand,optionType).Average();
+        gamma = GetGamma(s0,k,r,sigma,dt,n,rand,optionType).Average();
+        vega = GetVega(s0,k,r,sigma,dt,n,rand,optionType).Average();
+        theta = GetTheta(s0,k,r,sigma,dt,n,rand,optionType).Average();
+        rho = GetRho(s0,k,r,sigma,dt,n,rand,optionType).Average();
 
         Console.WriteLine("Option price: {0}", optionPrice);
         Console.WriteLine("Standard Error without antithetic: {0}", stdError);
@@ -121,111 +138,112 @@ class MonteCarlo
         return result;
     }
 
-    public static double[] GeometricBrownian(double s0, double k, double r, double sigma, double dt, int n, double[] vdc)
+    public static double[] GeometricBrownian(double s0, double k, double r, double sigma, double dt, int n, double[] rand)
     {
-        double[] s = new double[n];
-        for (int i = 0; i < n; i++)
+        double[] s = new double[2*n];
+        for (int i = 0; i < rand.Length; i++)
         {
-            s[i] = s0 * Math.Exp((r - 0.5 * Math.Pow(sigma, 2)) * dt + sigma * Math.Sqrt(dt) * vdc[i]);
+            dt = dt < 0 ? Math.Abs(dt) : dt;
+            s[i] = s0 * Math.Exp((r - 0.5 * Math.Pow(sigma, 2)) * dt + sigma * Math.Sqrt(dt) * rand[i]);
         }
         return s;
     }
-    public static double[] GeometricBrownianAnti(double s0, double k, double r, double sigma, double dt, int n, double[] vdc)
+    public static double[] GeometricBrownianAnti(double s0, double k, double r, double sigma, double dt, int n, double[] rand)
     {
-        double[] sAnti = new double[n];
-        for (int i = 0; i < n; i++)
+        double[] sAnti = new double[2*n];
+        for (int i = 0; i < rand.Length; i++)
         {
-            sAnti[i] = s0 * Math.Exp((r - 0.5 * Math.Pow(sigma, 2)) * dt - sigma * Math.Sqrt(dt) * vdc[i]);
+            sAnti[i] = s0 * Math.Exp((r - 0.5 * Math.Pow(sigma, 2)) * dt - sigma * Math.Sqrt(dt) * rand[i]);
         }
         return sAnti;
     }
-    public static double[] GetDelta(double s0, double k, double r, double sigma, double dt, int n, double[] vdc, string optionType)
+    public static double[] GetDelta(double s0, double k, double r, double sigma, double dt, int n, double[] rand, string optionType)
     {
-        double[] delta = new double[n];
-        double[] deltaUp = new double[n];
-        double[] deltaDown = new double[n];
-        double[] vdcDouble = new double[n];
+        double[] delta = new double[2*n];
+        double[] deltaUp = new double[2*n];
+        double[] deltaDown = new double[2*n];
+        double[] randDouble = new double[2*n];
 
-        for (int i = 0; i < vdc.Length; i++)
+        for (int i = 0; i < rand.Length; i++)
         {
-            deltaUp = GeometricBrownian(s0 + vdc[i], k, r, sigma, dt, n, vdc);
-            deltaDown = GeometricBrownian(s0 - vdc[i], k, r, sigma, dt, n, vdc);
+            deltaUp = GeometricBrownian(s0 + rand[i], k, r, sigma, dt, n, rand);
+            deltaDown = GeometricBrownian(s0 - rand[i], k, r, sigma, dt, n, rand);
 
-            vdcDouble[i] = vdc[i] * 2;
+            randDouble[i] = rand[i] * 2;
 
-            delta[i] = optionType == "call" ? (Math.Max(deltaUp[i] - k, 0) - Math.Max(deltaDown[i] - k, 0)) / vdcDouble[i] : (Math.Max(k - deltaUp[i], 0) - Math.Max(k - deltaDown[i], 0)) / vdcDouble[i];
+            delta[i] = optionType == "call" ? (Math.Max(deltaUp[i] - k, 0) - Math.Max(deltaDown[i] - k, 0)) / randDouble[i] : (Math.Max(k - deltaUp[i], 0) - Math.Max(k - deltaDown[i], 0)) / randDouble[i];
         }
         return delta;
     }
-    public static double[] GetGamma(double s0, double k, double r, double sigma, double dt, int n, double[] vdc, string optionType)
+    public static double[] GetGamma(double s0, double k, double r, double sigma, double dt, int n, double[] rand, string optionType)
     {
-        double[] gamma = new double[n];
-        double[] gammaUp = new double[n];
-        double[] gammaDown = new double[n];
-        double[] vdcSquare = new double[n];
+        double[] gamma = new double[2*n];
+        double[] gammaUp = new double[2*n];
+        double[] gammaDown = new double[2*n];
+        double[] randSquare = new double[2*n];
 
-        for (int i = 0; i < vdc.Length; i++)
+        for (int i = 0; i < rand.Length; i++)
         {
-            gammaUp = GeometricBrownian(s0 + vdc[i], k, r, sigma, dt, n, vdc);
-            gammaDown = GeometricBrownian(s0 - vdc[i], k, r, sigma, dt, n, vdc);
+            gammaUp = GeometricBrownian(s0 + rand[i], k, r, sigma, dt, n, rand);
+            gammaDown = GeometricBrownian(s0 - rand[i], k, r, sigma, dt, n, rand);
 
-            vdcSquare[i] = Math.Pow(vdc[i], 2);
+            randSquare[i] = Math.Pow(rand[i], 2);
 
-            gamma[i] = optionType == "call" ? (Math.Max(gammaUp[i] - k, 0) + Math.Max(gammaDown[i] - k, 0) - 2 * Math.Max(GeometricBrownian(s0, k, r, sigma, dt, n, vdc)[i] - k, 0)) / vdcSquare[i] : (Math.Max(k - gammaUp[i], 0) + Math.Max(k - gammaDown[i], 0) - 2 * Math.Max(k - GeometricBrownian(s0, k, r, sigma, dt, n, vdc)[i], 0)) / vdcSquare[i];
+            gamma[i] = optionType == "call" ? (Math.Max(gammaUp[i] - k, 0) + Math.Max(gammaDown[i] - k, 0) - 2 * Math.Max(GeometricBrownian(s0, k, r, sigma, dt, n, rand)[i] - k, 0)) / randSquare[i] : (Math.Max(k - gammaUp[i], 0) + Math.Max(k - gammaDown[i], 0) - 2 * Math.Max(k - GeometricBrownian(s0, k, r, sigma, dt, n, rand)[i], 0)) / randSquare[i];
         }
         return gamma;
     }
 
-    public static double[] GetVega(double s0, double k, double r, double sigma, double dt, int n, double[] vdc, string optionType)
+    public static double[] GetVega(double s0, double k, double r, double sigma, double dt, int n, double[] rand, string optionType)
     {
-        double[] vega = new double[n];
-        double[] vegaUp = new double[n];
-        double[] vegaDown = new double[n];
-        double[] vdcDouble = new double[n];
+        double[] vega = new double[2*n];
+        double[] vegaUp = new double[2*n];
+        double[] vegaDown = new double[2*n];
+        double[] randDouble = new double[2*n];
 
-        for (int i = 0; i < vdc.Length; i++)
+        for (int i = 0; i < rand.Length; i++)
         {
-            vegaUp = GeometricBrownian(s0, k, r, sigma + vdc[i], dt, n, vdc);
-            vegaDown = GeometricBrownian(s0, k, r, sigma - vdc[i], dt, n, vdc);
+            vegaUp = GeometricBrownian(s0, k, r, sigma + rand[i], dt, n, rand);
+            vegaDown = GeometricBrownian(s0, k, r, sigma - rand[i], dt, n, rand);
 
-            vdcDouble[i] = vdc[i] * 2;
+            randDouble[i] = rand[i] * 2;
 
-            vega[i] = optionType == "call" ? (Math.Max(vegaUp[i] - k, 0) - Math.Max(vegaDown[i] - k, 0)) / vdcDouble[i] : (Math.Max(k - vegaUp[i], 0) - Math.Max(k - vegaDown[i], 0)) / vdcDouble[i];
+            vega[i] = optionType == "call" ? (Math.Max(vegaUp[i] - k, 0) - Math.Max(vegaDown[i] - k, 0)) / randDouble[i] : (Math.Max(k - vegaUp[i], 0) - Math.Max(k - vegaDown[i], 0)) / randDouble[i];
         }
         return vega;
     }
 
-    public static double[] GetTheta(double s0, double k, double r, double sigma, double dt, int n, double[] vdc, string optionType)
+    public static double[] GetTheta(double s0, double k, double r, double sigma, double dt, int n, double[] rand, string optionType)
     {
-        double[] theta = new double[n];
-        double[] thetaUp = new double[n];
-        double[] thetaDown = new double[n];
+        double[] theta = new double[2*n];
+        double[] thetaUp = new double[2*n];
+        double[] thetaDown = new double[2*n];
 
-        for (int i = 0; i < vdc.Length; i++)
+        for (int i = 0; i < rand.Length; i++)
         {
-            thetaUp = GeometricBrownian(s0, k, r, sigma, dt + vdc[i], n, vdc);
-            thetaDown = GeometricBrownian(s0, k, r, sigma, dt, n, vdc);
-
-            theta[i] = optionType == "call" ? (Math.Max(thetaUp[i] - k, 0) - Math.Max(thetaDown[i] - k, 0)) / vdc[i] : (Math.Max(k - thetaUp[i], 0) - Math.Max(k - thetaDown[i], 0)) / vdc[i];
+            thetaUp = GeometricBrownian(s0, k, r, sigma, dt + rand[i], n, rand);
+            thetaDown = GeometricBrownian(s0, k, r, sigma, dt, n, rand);
+            
+            theta[i] = optionType == "call" ? (Math.Max(thetaUp[i] - k, 0) - Math.Max(thetaDown[i] - k, 0)) / rand[i] : (Math.Max(k - thetaUp[i], 0) - Math.Max(k - thetaDown[i], 0)) / rand[i];          
         }
         return theta;
     }
 
-    public static double[] GetRho(double s0, double k, double r, double sigma, double dt, int n, double[] vdc, string optionType)
+    public static double[] GetRho(double s0, double k, double r, double sigma, double dt, int n, double[] rand, string optionType)
     {
-        double[] rho = new double[n];
-        double[] rhoUp = new double[n];
-        double[] rhoDown = new double[n];
-        double[] vdcDouble = new double[n];
+        double[] rho = new double[2*n];
+        double[] rhoUp = new double[2*n];
+        double[] rhoDown = new double[2*n];
+        double[] randDouble = new double[2*n];
 
-        for (int i = 0; i < vdc.Length; i++)
+        for (int i = 0; i < rand.Length; i++)
         {
-            rhoUp = GeometricBrownian(s0, k, r  + vdc[i], sigma, dt, n, vdc);
-            rhoDown = GeometricBrownian(s0, k, r - vdc[i], sigma, dt, n, vdc);
+            rhoUp = GeometricBrownian(s0, k, r  + rand[i], sigma, dt, n, rand);
+            rhoDown = GeometricBrownian(s0, k, r - rand[i], sigma, dt, n, rand);
 
-            vdcDouble[i] = vdc[i] * 2;
+            randDouble[i] = rand[i] * 2;
 
-            rho[i] = optionType == "call" ? (Math.Max(rhoUp[i] - k, 0) - Math.Max(rhoDown[i] - k, 0)) / vdcDouble[i] : (Math.Max(k - rhoUp[i], 0) - Math.Max(k - rhoDown[i], 0)) / vdcDouble[i];
+            rho[i] = optionType == "call" ? (Math.Max(rhoUp[i] - k, 0) - Math.Max(rhoDown[i] - k, 0)) / randDouble[i] : (Math.Max(k - rhoUp[i], 0) - Math.Max(k - rhoDown[i], 0)) / randDouble[i];
         }
         return rho;
     }
